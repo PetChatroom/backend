@@ -1,0 +1,76 @@
+# Defines a single chat message
+type Message @model {
+  id: ID!
+  chatroomId: ID! @index(name: "byChatroom", queryField: "messagesByChatroom")
+  text: String!
+  senderId: String!
+  createdAt: String!
+}
+
+# Defines waiting room status
+type WaitingRoomStatus {
+  userId: ID!
+  status: String!
+  chatroomId: ID
+  waitTime: Int
+}
+
+# Defines a match result
+type Match {
+  userId: ID!
+  chatroomId: ID!
+  matchedUserId: ID!
+}
+
+# Defines the result for leave operation
+type LeaveResult {
+  success: Boolean!
+  message: String
+}
+
+# Defines the mutations (write operations) that clients can execute
+type Mutation {
+  # Sends a new message to a chatroom
+  sendMessage(chatroomId: ID!, text: String!, senderId: String!): Message
+    @aws_api_key
+    @function(name: "messagehandlerlambda-${env}")
+
+  # Joins the waiting room to find a match
+  joinWaitingRoom: WaitingRoomStatus
+    @aws_api_key
+    @function(name: "joinwaitingroomlambda-${env}")
+
+  # Leaves the waiting room
+  leaveWaitingRoom: LeaveResult
+    @aws_api_key
+    @function(name: "leavewaitingroomlambda-${env}")
+
+  # Create a match (for your matchmaking Lambda to call)
+  createMatch(userId: ID!, matchedUserId: ID!, chatroomId: ID!): Match
+    @aws_api_key
+    @function(name: "creatematchlambda-${env}")
+}
+
+# Defines the queries that clients can execute
+type Query {
+  # Gets all messages for a specific chatroom
+  getMessages(chatroomId: ID!): [Message]
+
+  # Gets waiting room status for a user
+  getWaitingStatus(userId: ID!): WaitingRoomStatus
+    @aws_api_key
+    @function(name: "getwaitingstatuslambda-${env}")
+}
+
+# Defines the subscriptions for real-time updates
+type Subscription {
+  # Subscribes to new messages in a specific chatroom
+  onNewMessage(chatroomId: ID!): Message
+    @aws_api_key
+    @aws_subscribe(mutations: ["sendMessage"])
+
+  # Subscribes to match notifications for a specific user
+  onMatchFound(userId: ID!): Match
+    @aws_api_key
+    @aws_subscribe(mutations: ["createMatch"])
+}

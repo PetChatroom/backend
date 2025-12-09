@@ -1,0 +1,22 @@
+*.js
+!jest.config.js
+*.d.ts
+node_modules
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+
+**/lambda/**/package/
+
+.env
+.env.*
+!.env.example
+
+**/venv/
+**/.venv/
+
+lambda/*/package/
+
+# ...BUT, make an EXCEPTION for any file ending in .py inside those directories.
+!lambda/*/package/*.py

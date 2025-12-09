@@ -1,0 +1,6 @@
+# This function needs the OpenAI library to make API calls
+openai
+
+# This function may need to make a signed HTTP request to AppSync
+# 'requests' is a common library for this.
+requests
