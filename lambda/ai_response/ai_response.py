@@ -122,7 +122,7 @@ def handler(event, context):
             api_response = requests.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                json={"model": "gpt-5.1", "messages": prompt_messages},
+                json={"model": "gpt-5.2", "messages": prompt_messages},
                 timeout=30
             )
             api_response.raise_for_status()
