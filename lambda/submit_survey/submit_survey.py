@@ -53,17 +53,13 @@ def handler(event, context):
         
         print(f"Survey response saved: {survey_response['id']}")
         
+        # Return the survey response object for AppSync
         return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'id': survey_response['id'],
-                'timestamp': timestamp
-            })
+            'id': survey_response['id'],
+            'timestamp': timestamp,
+            '__typename': 'SurveyResponse'
         }
         
     except Exception as e:
         print(f"Error saving survey response: {e}")
-        return {
-            'statusCode': 500,
-            'body': json.dumps({'error': str(e)})
-        }
+        raise Exception(f"Failed to submit survey: {str(e)}")

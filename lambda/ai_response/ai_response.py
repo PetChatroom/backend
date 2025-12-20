@@ -106,8 +106,28 @@ def handler(event, context):
         )
         all_messages = sorted(response.get('Items', []), key=lambda x: x['createdAt'])
         
+        # Check if AI was the last to speak
         if not all_messages or all_messages[-1]['senderId'].startswith('ai-'):
             print("No human messages to respond to or AI was the last to speak.")
+            return
+        
+        # Check if there are multiple human messages since last AI response
+        # Find the last AI message
+        last_ai_index = -1
+        for i in range(len(all_messages) - 1, -1, -1):
+            if all_messages[i]['senderId'].startswith('ai-'):
+                last_ai_index = i
+                break
+        
+        # Get messages since last AI response
+        messages_since_ai = all_messages[last_ai_index + 1:] if last_ai_index >= 0 else all_messages
+        
+        # Only respond if there's been enough human activity (at least 1 message from each human, or 2+ messages total)
+        unique_human_senders = set(msg['senderId'] for msg in messages_since_ai if not msg['senderId'].startswith('ai-'))
+        
+        # If only one human has spoken once, wait for more conversation
+        if len(messages_since_ai) < 2 and len(unique_human_senders) < 2:
+            print(f"Waiting for more conversation activity. Only {len(messages_since_ai)} message(s) from {len(unique_human_senders)} human(s).")
             return
 
         # Prepare input for OpenAI Responses API
@@ -137,7 +157,7 @@ def handler(event, context):
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "gpt-4o",  # Using a valid model
+                    "model": "gpt-5.2",  # Using a valid model
                     "input": input_items,
                     "instructions": ai_prompt_content,
                     "temperature": 1.0,

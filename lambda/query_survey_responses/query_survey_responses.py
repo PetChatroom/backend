@@ -56,19 +56,15 @@ def handler(event, context):
         total_responses = len(items)
         correct_guesses = sum(1 for item in items if item.get('wasCorrect', False))
         
+        # Return data directly for AppSync
         return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'responses': items,
-                'totalCount': total_responses,
-                'correctGuesses': correct_guesses,
-                'accuracy': (correct_guesses / total_responses * 100) if total_responses > 0 else 0
-            }, default=str)
+            'responses': items,
+            'totalCount': total_responses,
+            'correctGuesses': correct_guesses,
+            'accuracy': (correct_guesses / total_responses * 100) if total_responses > 0 else 0,
+            '__typename': 'SurveyQueryResult'
         }
         
     except Exception as e:
         print(f"Error querying survey responses: {e}")
-        return {
-            'statusCode': 500,
-            'body': json.dumps({'error': str(e)})
-        }
+        raise Exception(f"Failed to query survey responses: {str(e)}")
