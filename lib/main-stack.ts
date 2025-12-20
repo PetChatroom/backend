@@ -20,6 +20,7 @@ export class MainStack extends cdk.Stack {
       waitingRoomTable: databaseStack.waitingRoomTable,
       chatroomsTable: databaseStack.chatroomsTable,
       messagesTable: databaseStack.messagesTable,
+      surveyResponsesTable: databaseStack.surveyResponsesTable,
       openAiApiKeySecret: secretsStack.openAiApiKeySecret,
     });
 

@@ -15,6 +15,7 @@ interface ApiLambdasStackProps extends cdk.StackProps {
   waitingRoomTable: dynamodb.Table;
   chatroomsTable: dynamodb.Table;
   messagesTable: dynamodb.Table;
+  surveyResponsesTable: dynamodb.Table;
   openAiApiKeySecret: secretsmanager.ISecret;
 }
 
@@ -27,6 +28,8 @@ export class ApiLambdasStack extends cdk.Stack {
   public readonly createMatchLambda: lambda.Function;
   public readonly getWaitingStatusLambda: lambda.Function;
   public readonly leaveWaitingRoomLambda: lambda.Function;
+  public readonly submitSurveyLambda: lambda.Function;
+  public readonly querySurveyResponsesLambda: lambda.Function;
 
   constructor(scope: Construct, id: string, props: ApiLambdasStackProps) {
     super(scope, id, props);
@@ -178,6 +181,42 @@ export class ApiLambdasStack extends cdk.Stack {
       }
     );
 
+    // Submit Survey Lambda
+    this.submitSurveyLambda = new lambda.Function(
+      this,
+      "SubmitSurveyHandler",
+      {
+        runtime: lambda.Runtime.PYTHON_3_9,
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, "../lambda/submit_survey")
+        ),
+        handler: "submit_survey.handler",
+        environment: {
+          SURVEY_RESPONSES_TABLE: props.surveyResponsesTable.tableName,
+        },
+        functionName: `submitsurvey-${envSuffix}`,
+        logRetention: RetentionDays.ONE_MONTH,
+      }
+    );
+
+    // Query Survey Responses Lambda
+    this.querySurveyResponsesLambda = new lambda.Function(
+      this,
+      "QuerySurveyResponsesHandler",
+      {
+        runtime: lambda.Runtime.PYTHON_3_9,
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, "../lambda/query_survey_responses")
+        ),
+        handler: "query_survey_responses.handler",
+        environment: {
+          SURVEY_RESPONSES_TABLE: props.surveyResponsesTable.tableName,
+        },
+        functionName: `querysurveyresponses-${envSuffix}`,
+        logRetention: RetentionDays.ONE_MONTH,
+      }
+    );
+
     // --- CREATE DATA SOURCES AND RESOLVERS ---
     const messageHandlerDataSource = this.api.addLambdaDataSource(
       "MessageHandlerDataSource",
@@ -237,6 +276,24 @@ export class ApiLambdasStack extends cdk.Stack {
       responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultList(),
     });
 
+    const submitSurveyDataSource = this.api.addLambdaDataSource(
+      "SubmitSurveyDataSource",
+      this.submitSurveyLambda
+    );
+    submitSurveyDataSource.createResolver("SubmitSurveyResolver", {
+      typeName: "Mutation",
+      fieldName: "submitSurvey",
+    });
+
+    const querySurveyResponsesDataSource = this.api.addLambdaDataSource(
+      "QuerySurveyResponsesDataSource",
+      this.querySurveyResponsesLambda
+    );
+    querySurveyResponsesDataSource.createResolver("QuerySurveyResponsesResolver", {
+      typeName: "Query",
+      fieldName: "querySurveyResponses",
+    });
+
     // --- TRIGGERS ---
     props.waitingRoomTable.grantStreamRead(this.matchmakingLambda);
     this.matchmakingLambda.addEventSource(
@@ -263,6 +320,8 @@ export class ApiLambdasStack extends cdk.Stack {
     props.waitingRoomTable.grantReadData(this.getWaitingStatusLambda);
     props.chatroomsTable.grantReadData(this.getWaitingStatusLambda);
     props.waitingRoomTable.grantReadWriteData(this.leaveWaitingRoomLambda);
+    props.surveyResponsesTable.grantWriteData(this.submitSurveyLambda);
+    props.surveyResponsesTable.grantReadData(this.querySurveyResponsesLambda);
 
     // Grant AppSync mutation permissions
     this.matchmakingLambda.addToRolePolicy(

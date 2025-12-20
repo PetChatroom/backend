@@ -67,6 +67,16 @@ def send_message_via_appsync(chatroom_id, text, sender_id):
     response.raise_for_status()
     return response.json()
 
+def extract_output_text(resp_json: dict) -> str:
+    """Extract text from the new Responses API output format."""
+    parts = []
+    for item in resp_json.get("output", []):
+        if item.get("type") == "message":
+            for c in item.get("content", []):
+                if c.get("type") == "output_text":
+                    parts.append(c.get("text", ""))
+    return "".join(parts)
+
 def handler(event, context):
     """Gets AI response and sends via AppSync after a simulated typing delay."""
     try:
@@ -100,8 +110,8 @@ def handler(event, context):
             print("No human messages to respond to or AI was the last to speak.")
             return
 
-        # Prepare messages for OpenAI
-        prompt_messages = [{"role": "system", "content": ai_prompt_content}]
+        # Prepare input for OpenAI Responses API
+        input_items = []
         human_participant_names = {}
         player_counter = 1
         
@@ -115,19 +125,28 @@ def handler(event, context):
             sender_id = msg['senderId']
             role = "assistant" if sender_id.startswith('ai-') else "user"
             name = "AI_Player" if role == "assistant" else human_participant_names.get(sender_id, "Unknown_Player")
-            prompt_messages.append({"role": role, "name": name, "content": msg['text']})
+            input_items.append({"role": role, "name": name, "content": msg['text']})
 
-        # Get AI response
+        # Get AI response using new Responses API
+        api_response = None
         try:
             api_response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                json={"model": "gpt-5.2", "messages": prompt_messages},
-                timeout=30
+                "https://api.openai.com/v1/responses",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "gpt-4o",  # Using a valid model
+                    "input": input_items,
+                    "instructions": ai_prompt_content,
+                    "temperature": 1.0,
+                },
+                timeout=30,
             )
             api_response.raise_for_status()
             response_data = api_response.json()
-            ai_text = response_data['choices'][0]['message']['content'].strip()
+            ai_text = extract_output_text(response_data).strip()
             
             # Check if AI wants to remain silent
             if ai_text == "Silence1":
@@ -140,6 +159,8 @@ def handler(event, context):
 
         except requests.exceptions.RequestException as e:
             print(f"OpenAI API error: {e}")
+            if api_response is not None:
+                print(f"Status: {api_response.status_code}, Response: {api_response.text}")
             return
             
         # Calculate and apply typing delay

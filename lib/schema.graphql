@@ -28,6 +28,28 @@ type LeaveResult {
   message: String
 }
 
+# Defines a survey response
+type SurveyResponse {
+  id: ID!
+  timestamp: String!
+  chatroomId: ID!
+  userId: ID!
+  botGuess: String!
+  reasoning: String
+  llmKnowledge: String!
+  chatbotFrequency: String!
+  age: Int!
+  education: String!
+}
+
+# Defines the survey query result with statistics
+type SurveyQueryResult {
+  responses: [SurveyResponse]!
+  totalCount: Int!
+  correctGuesses: Int!
+  accuracy: Float!
+}
+
 # Defines the mutations (write operations) that clients can execute
 type Mutation {
   # Sends a new message to a chatroom
@@ -49,6 +71,20 @@ type Mutation {
   createMatch(userId: ID!, matchedUserId: ID!, chatroomId: ID!): Match
     @aws_api_key
     @function(name: "creatematchlambda-${env}")
+
+  # Submit survey response
+  submitSurvey(
+    chatroomId: ID!
+    userId: ID!
+    botGuess: String!
+    reasoning: String
+    llmKnowledge: String!
+    chatbotFrequency: String!
+    age: Int!
+    education: String!
+  ): SurveyResponse
+    @aws_api_key
+    @function(name: "submitsurveylambda-${env}")
 }
 
 # Defines the queries that clients can execute
@@ -60,6 +96,18 @@ type Query {
   getWaitingStatus(userId: ID!): WaitingRoomStatus
     @aws_api_key
     @function(name: "getwaitingstatuslambda-${env}")
+
+  # Query survey responses with filters
+  querySurveyResponses(
+    education: String
+    llmKnowledge: String
+    minAge: Int
+    maxAge: Int
+    chatbotFrequency: String
+    limit: Int
+  ): SurveyQueryResult
+    @aws_api_key
+    @function(name: "querysurveyresponseslambda-${env}")
 }
 
 # Defines the subscriptions for real-time updates

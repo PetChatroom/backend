@@ -7,6 +7,7 @@ export class DatabaseStack extends cdk.Stack {
   public readonly waitingRoomTable: dynamodb.Table;
   public readonly chatroomsTable: dynamodb.Table;
   public readonly messagesTable: dynamodb.Table;
+  public readonly surveyResponsesTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -29,6 +30,26 @@ export class DatabaseStack extends cdk.Stack {
       sortKey: { name: "createdAt", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    this.surveyResponsesTable = new dynamodb.Table(this, "SurveyResponsesTable", {
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "timestamp", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Add GSI for filtering by education level, age range, etc.
+    this.surveyResponsesTable.addGlobalSecondaryIndex({
+      indexName: "education-index",
+      partitionKey: { name: "education", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "timestamp", type: dynamodb.AttributeType.STRING },
+    });
+
+    this.surveyResponsesTable.addGlobalSecondaryIndex({
+      indexName: "llmKnowledge-index",
+      partitionKey: { name: "llmKnowledge", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "timestamp", type: dynamodb.AttributeType.STRING },
     });
   }
 }
