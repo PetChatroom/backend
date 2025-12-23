@@ -16,15 +16,18 @@ SURVEY_RESPONSES_TABLE = DYNAMODB.Table(SURVEY_RESPONSES_TABLE_NAME)
 def handler(event, context):
     """Saves survey response to DynamoDB."""
     try:
+        # AppSync wraps arguments in 'arguments' field
+        args = event.get('arguments', event)
+        
         # Extract survey data from event
-        chatroom_id = event.get('chatroomId')
-        user_id = event.get('userId')
-        bot_guess = event.get('botGuess')  # Player 1 or Player 2
-        reasoning = event.get('reasoning', '')
-        llm_knowledge = event.get('llmKnowledge')  # None, Some, High, Expert
-        chatbot_frequency = event.get('chatbotFrequency')  # Never, Daily, Weekly, Monthly
-        age = event.get('age')
-        education = event.get('education')  # None, Highschool, Undergraduate, Postgraduate
+        chatroom_id = args.get('chatroomId')
+        user_id = args.get('userId')
+        bot_guess = args.get('botGuess')  # Player 1 or Player 2
+        reasoning = args.get('reasoning', '')
+        llm_knowledge = args.get('llmKnowledge')  # None, Some, High, Expert
+        chatbot_frequency = args.get('chatbotFrequency')  # Never, Daily, Weekly, Monthly
+        age = args.get('age')
+        education = args.get('education')  # None, Highschool, Undergraduate, Postgraduate
         
         # Validate required fields
         if not all([chatroom_id, user_id, bot_guess, llm_knowledge, chatbot_frequency, age, education]):
